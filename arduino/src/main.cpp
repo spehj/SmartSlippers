@@ -26,15 +26,28 @@
 #include <ArduinoBLE.h>
 
 /* Constant defines -------------------------------------------------------- */
-#define CONVERT_G_TO_MS2    9.80665f
-#define MAX_ACCEPTED_RANGE  2.0f        // starting 03/2022, models are generated setting range to +-2, but this example use Arudino library which set range to +-4g. If you are using an older model, ignore this value and use 4.0f instead
+#define CONVERT_G_TO_MS2 9.80665f
+#define MAX_ACCEPTED_RANGE 2.0f // starting 03/2022, models are generated setting range to +-2, but this example use Arudino library which set range to +-4g. If you are using an older model, ignore this value and use 4.0f instead
 
 /* Private variables ------------------------------------------------------- */
 static bool debug_nn = false; // Set this to true to see e.g. features generated from the raw signal
 static uint32_t run_inference_every_ms = 200;
 static rtos::Thread inference_thread(osPriorityLow);
-static float buffer[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE] = { 0 };
+static float buffer[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE] = {0};
 static float inference_buffer[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE];
+
+// Blink
+
+#define RED 22
+#define BLUE 24
+#define GREEN 23
+#define LED_PWR 25
+
+const int ledPin = LED_BUILTIN; // the number of the LED pin
+int ledState = LOW;
+unsigned long previousMillis = 0;
+
+void blink(long interval, int ledPin);
 
 BLEDevice central;
 BLEService copatiService("eba7805c-b406-11ec-b909-0242ac120002");
@@ -44,36 +57,47 @@ BLEIntCharacteristic copatiStopnice("f72e3316-b407-11ec-b909-0242ac120002", BLER
 BLEIntCharacteristic copatiDvigalo("05f99232-b408-11ec-b909-0242ac120002", BLERead | BLENotify);
 BLEIntCharacteristic copatiIdle("f7a9b8d6-b408-11ec-b909-0242ac120002", BLERead | BLENotify);
 
-
 /* Forward declaration */
 void run_inference_background();
 
 /**
-* @brief      Arduino setup function
-*/
+ * @brief      Arduino setup function
+ */
 void setup()
 {
     delay(5000);
+    pinMode(RED, OUTPUT);
+    pinMode(BLUE, OUTPUT);
+    pinMode(GREEN, OUTPUT);
+    pinMode(LED_PWR, OUTPUT);
+
+    digitalWrite(RED, HIGH);
+    digitalWrite(BLUE, HIGH);
+    digitalWrite(GREEN, HIGH);
+    digitalWrite(LED_PWR, HIGH);
 
     // put your setup code here, to run once:
     Serial.begin(115200);
     Serial.println("Edge Impulse Inferencing Demo");
 
-    if (!IMU.begin()) {
+    if (!IMU.begin())
+    {
         ei_printf("Failed to initialize IMU!\r\n");
     }
-    else {
+    else
+    {
         ei_printf("IMU initialized\r\n");
     }
 
-
-    if (!BLE.begin()) {
+    if (!BLE.begin())
+    {
         Serial.println("starting BLE failed!");
-        while (1);
+        while (1)
+            ;
     }
 
-    BLE.setLocalName("CopatiPrediction");
-    //BLE.setDeviceName("arduino");
+    BLE.setLocalName("SmartSlippers");
+    BLE.setDeviceName("SmartSlippers");
     BLE.setAdvertisedService(copatiService);
     copatiService.addCharacteristic(copatiHoja);
     copatiService.addCharacteristic(copatiStopnice);
@@ -83,16 +107,26 @@ void setup()
     BLE.advertise();
     Serial.println("Bluetooth device active, waiting for connections...");
 
-   while(1){
+    while (1)
+    {
+        blink(400, RED);
         central = BLE.central();
-        if(central){
+        if (central)
+        {
+            digitalWrite(RED, HIGH);
+            digitalWrite(BLUE, HIGH);
+            digitalWrite(GREEN, LOW);
+            digitalWrite(LED_PWR, HIGH);
+
             Serial.print("Connected to central: ");
             Serial.println(central.address());
+
             break;
         }
-   } 
+    }
 
-    if (EI_CLASSIFIER_RAW_SAMPLES_PER_FRAME != 3) {
+    if (EI_CLASSIFIER_RAW_SAMPLES_PER_FRAME != 3)
+    {
         ei_printf("ERR: EI_CLASSIFIER_RAW_SAMPLES_PER_FRAME should be equal to 3 (the 3 sensor axes)\n");
         return;
     }
@@ -101,30 +135,33 @@ void setup()
 }
 
 /**
-* @brief      Printf function uses vsnprintf and output using Arduino Serial
-*
-* @param[in]  format     Variable argument list
-*/
-void ei_printf(const char *format, ...) {
-   static char print_buf[1024] = { 0 };
+ * @brief      Printf function uses vsnprintf and output using Arduino Serial
+ *
+ * @param[in]  format     Variable argument list
+ */
+void ei_printf(const char *format, ...)
+{
+    static char print_buf[1024] = {0};
 
-   va_list args;
-   va_start(args, format);
-   int r = vsnprintf(print_buf, sizeof(print_buf), format, args);
-   va_end(args);
+    va_list args;
+    va_start(args, format);
+    int r = vsnprintf(print_buf, sizeof(print_buf), format, args);
+    va_end(args);
 
-   if (r > 0) {
-       Serial.write(print_buf);
-   }
+    if (r > 0)
+    {
+        Serial.write(print_buf);
+    }
 }
 
 /**
  * @brief Return the sign of the number
- * 
- * @param number 
+ *
+ * @param number
  * @return int 1 if positive (or 0) -1 if negative
  */
-float ei_get_sign(float number) {
+float ei_get_sign(float number)
+{
     return (number >= 0.0) ? 1.0 : -1.0;
 }
 
@@ -141,23 +178,26 @@ void run_inference_background()
     ei_classifier_smooth_t smooth;
     ei_classifier_smooth_init(&smooth, 10 /* no. of readings */, 7 /* min. readings the same */, 0.8 /* min. confidence */, 0.3 /* max anomaly */);
 
-    while (1) {
+    while (1)
+    {
         // copy the buffer
         memcpy(inference_buffer, buffer, EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE * sizeof(float));
 
         // Turn the raw buffer in a signal which we can the classify
         signal_t signal;
         int err = numpy::signal_from_buffer(inference_buffer, EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE, &signal);
-        if (err != 0) {
+        if (err != 0)
+        {
             ei_printf("Failed to create signal from buffer (%d)\n", err);
             return;
         }
 
         // Run the classifier
-        ei_impulse_result_t result = { 0 };
+        ei_impulse_result_t result = {0};
 
         err = run_classifier(&signal, &result, debug_nn);
-        if (err != EI_IMPULSE_OK) {
+        if (err != EI_IMPULSE_OK)
+        {
             ei_printf("ERR: Failed to run classifier (%d)\n", err);
             return;
         }
@@ -165,7 +205,7 @@ void run_inference_background()
         // print the predictions
         ei_printf("Predictions ");
         ei_printf("(DSP: %d ms., Classification: %d ms., Anomaly: %d ms.)",
-            result.timing.dsp, result.timing.classification, result.timing.anomaly);
+                  result.timing.dsp, result.timing.classification, result.timing.anomaly);
         ei_printf(": ");
 
         // ei_classifier_smooth_update yields the predicted label
@@ -173,20 +213,24 @@ void run_inference_background()
         ei_printf("%s ", prediction);
         // print the cumulative results
         ei_printf(" [ ");
-        for (size_t ix = 0; ix < smooth.count_size; ix++) {
+        for (size_t ix = 0; ix < smooth.count_size; ix++)
+        {
             ei_printf("%u", smooth.count[ix]);
-            if (ix != smooth.count_size + 1) {
+            if (ix != smooth.count_size + 1)
+            {
                 ei_printf(", ");
             }
-            else {
-              ei_printf(" ");
+            else
+            {
+                ei_printf(" ");
             }
         }
         ei_printf("]\n");
 
-        if (central.connected()){
+        if (central.connected())
+        {
             ei_printf("Sending data to central\n");
-            //batteryLevelChar.writeValue()
+            // batteryLevelChar.writeValue()
             if (strcmp(prediction, "hoja") == 0)
             {
                 copatiHoja.writeValue(1);
@@ -231,13 +275,14 @@ void run_inference_background()
 }
 
 /**
-* @brief      Get data and run inferencing
-*
-* @param[in]  debug  Get debug info if true
-*/
+ * @brief      Get data and run inferencing
+ *
+ * @param[in]  debug  Get debug info if true
+ */
 void loop()
-{
-    while (1) {
+{   
+    while (1)
+    {   
         // Determine the next tick (and then sleep later)
         uint64_t next_tick = micros() + (EI_CLASSIFIER_INTERVAL_MS * 1000);
 
@@ -248,11 +293,12 @@ void loop()
         IMU.readAcceleration(
             buffer[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE - 3],
             buffer[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE - 2],
-            buffer[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE - 1]
-        );
+            buffer[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE - 1]);
 
-        for (int i = 0; i < 3; i++) {
-            if (fabs(buffer[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE - 3 + i]) > MAX_ACCEPTED_RANGE) {
+        for (int i = 0; i < 3; i++)
+        {
+            if (fabs(buffer[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE - 3 + i]) > MAX_ACCEPTED_RANGE)
+            {
                 buffer[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE - 3 + i] = ei_get_sign(buffer[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE - 3 + i]) * MAX_ACCEPTED_RANGE;
             }
         }
@@ -271,3 +317,27 @@ void loop()
 #if !defined(EI_CLASSIFIER_SENSOR) || EI_CLASSIFIER_SENSOR != EI_CLASSIFIER_SENSOR_ACCELEROMETER
 #error "Invalid model for current sensor"
 #endif
+
+void blink(long interval, int ledPin)
+{
+    unsigned long currentMillis = millis();
+
+    if (currentMillis - previousMillis >= interval)
+    {
+        // save the last time you blinked the LED
+        previousMillis = currentMillis;
+
+        // if the LED is off turn it on and vice-versa:
+        if (ledState == LOW)
+        {
+            ledState = HIGH;
+        }
+        else
+        {
+            ledState = LOW;
+        }
+
+        // set the LED with the ledState of the variable:
+        digitalWrite(ledPin, ledState);
+    }
+}
