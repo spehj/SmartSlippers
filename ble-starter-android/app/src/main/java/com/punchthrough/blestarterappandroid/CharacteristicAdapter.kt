@@ -25,12 +25,20 @@ import kotlinx.android.synthetic.main.row_characteristic.view.characteristic_pro
 import kotlinx.android.synthetic.main.row_characteristic.view.characteristic_uuid
 import org.jetbrains.anko.layoutInflater
 
+public val characteristicMap = mutableMapOf<String, String>()
+
 class CharacteristicAdapter(
+
     private val items: List<BluetoothGattCharacteristic>,
     private val onClickListener: ((characteristic: BluetoothGattCharacteristic) -> Unit)
 ) : RecyclerView.Adapter<CharacteristicAdapter.ViewHolder>() {
 
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        characteristicMap.put("05ed8326-b407-11ec-b909-0242ac120002", "hoja")
+        characteristicMap.put("f72e3316-b407-11ec-b909-0242ac120002", "stopnice")
+        characteristicMap.put("05f99232-b408-11ec-b909-0242ac120002", "dvigalo")
+        characteristicMap.put("f7a9b8d6-b408-11ec-b909-0242ac120002", "idle")
         val view = parent.context.layoutInflater.inflate(
             R.layout.row_characteristic,
             parent,
@@ -38,7 +46,7 @@ class CharacteristicAdapter(
         )
         return ViewHolder(view, onClickListener)
     }
-
+    
     override fun getItemCount() = items.size
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
@@ -52,7 +60,7 @@ class CharacteristicAdapter(
     ) : RecyclerView.ViewHolder(view) {
 
         fun bind(characteristic: BluetoothGattCharacteristic) {
-            view.characteristic_uuid.text = characteristic.uuid.toString()
+            view.characteristic_uuid.text = characteristicMap[characteristic.uuid.toString()] ?: characteristic.uuid.toString()
             view.characteristic_properties.text = characteristic.printProperties()
             view.setOnClickListener { onClickListener.invoke(characteristic) }
         }

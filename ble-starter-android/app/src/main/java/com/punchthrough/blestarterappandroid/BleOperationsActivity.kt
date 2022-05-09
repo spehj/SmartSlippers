@@ -66,6 +66,8 @@ class BleOperationsActivity : AppCompatActivity() {
     private val channelId = "12345"
     private val description = "Test Notification"
 
+    private val characteristicMap = mutableMapOf<String, String>()
+
     private val characteristics by lazy {
         ConnectionManager.servicesOnDevice(device)?.flatMap { service ->
             service.characteristics ?: listOf()
@@ -85,15 +87,22 @@ class BleOperationsActivity : AppCompatActivity() {
         }.toMap()
     }
     private val characteristicAdapter: CharacteristicAdapter by lazy {
-        CharacteristicAdapter(characteristics) { characteristic ->
+        CharacteristicAdapter(characteristics) {  characteristic ->
             showCharacteristicOptions(characteristic)
         }
+
     }
     private var notifyingCharacteristics = mutableListOf<UUID>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         ConnectionManager.registerListener(connectionEventListener)
         super.onCreate(savedInstanceState)
+
+        characteristicMap.put("05ed8326-b407-11ec-b909-0242ac120002", "hoja")
+        characteristicMap.put("f72e3316-b407-11ec-b909-0242ac120002", "stopnice")
+        characteristicMap.put("05f99232-b408-11ec-b909-0242ac120002", "dvigalo")
+        characteristicMap.put("f7a9b8d6-b408-11ec-b909-0242ac120002", "idle")
+
         device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
             ?: error("Missing BluetoothDevice from MainActivity!")
 
@@ -174,7 +183,7 @@ class BleOperationsActivity : AppCompatActivity() {
             selector("Select an action to perform", properties.map { it.action }) { _, i ->
                 when (properties[i]) {
                     CharacteristicProperty.Readable -> {
-                        log("Reading from ${characteristic.uuid}")
+                        log("Reading from ${ characteristicMap[characteristic.uuid.toString()]}")
                         ConnectionManager.readCharacteristic(device, characteristic)
                     }
                     CharacteristicProperty.Writable, CharacteristicProperty.WritableWithoutResponse -> {
@@ -230,7 +239,7 @@ class BleOperationsActivity : AppCompatActivity() {
             }
 
             onCharacteristicRead = { _, characteristic ->
-                log("Read from ${characteristic.uuid}: ${characteristic.value.toHexString()}")
+                log("Read from ${characteristicMap[characteristic.uuid.toString()]}: ${characteristic.value.toHexString()}")
             }
 
             onCharacteristicWrite = { _, characteristic ->
