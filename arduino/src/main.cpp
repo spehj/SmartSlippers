@@ -106,10 +106,11 @@ void setup()
     BLE.addService(copatiService);
     BLE.advertise();
     Serial.println("Bluetooth device active, waiting for connections...");
-
+    
+    digitalWrite(RED, LOW);
     while (1)
-    {
-        blink(400, RED);
+    {   blink(400, RED);
+        //Serial.println("Not connected...");
         central = BLE.central();
         if (central)
         {
@@ -204,9 +205,9 @@ void run_inference_background()
 
         // print the predictions
         ei_printf("Predictions ");
-        ei_printf("(DSP: %d ms., Classification: %d ms., Anomaly: %d ms.)",
-                  result.timing.dsp, result.timing.classification, result.timing.anomaly);
-        ei_printf(": ");
+        ///ei_printf("(DSP: %d ms., Classification: %d ms., Anomaly: %d ms.)",
+        ///          result.timing.dsp, result.timing.classification, result.timing.anomaly);
+        ///ei_printf(": ");
 
         // ei_classifier_smooth_update yields the predicted label
         const char *prediction = ei_classifier_smooth_update(&smooth, &result);
@@ -231,36 +232,37 @@ void run_inference_background()
         {
             ei_printf("Sending data to central\n");
             // batteryLevelChar.writeValue()
+            //ei_printf("Prediction: %s \n", prediction);
             if (strcmp(prediction, "hoja") == 0)
-            {
+            {   ei_printf("Prediction: hoja \n");
                 copatiHoja.writeValue(1);
                 copatiStopnice.writeValue(0);
                 copatiDvigalo.writeValue(0);
                 copatiIdle.writeValue(0);
             }
             else if (strcmp(prediction, "stopnice") == 0)
-            {
+            {   ei_printf("Prediction: stopnice \n");
                 copatiHoja.writeValue(0);
                 copatiStopnice.writeValue(1);
                 copatiDvigalo.writeValue(0);
                 copatiIdle.writeValue(0);
             }
             else if (strcmp(prediction, "dvigalo") == 0)
-            {
+            {   ei_printf("Prediction: dvigalo \n");
                 copatiHoja.writeValue(0);
                 copatiStopnice.writeValue(0);
                 copatiDvigalo.writeValue(1);
                 copatiIdle.writeValue(0);
             }
             else if (strcmp(prediction, "idle") == 0)
-            {
+            {   ei_printf("Prediction: idle \n");
                 copatiHoja.writeValue(0);
                 copatiStopnice.writeValue(0);
                 copatiDvigalo.writeValue(0);
                 copatiIdle.writeValue(1);
             }
             else if (strcmp(prediction, "uncertain") == 0)
-            {
+            {   ei_printf("Prediction: uncertain \n");
                 copatiHoja.writeValue(2);
                 copatiStopnice.writeValue(3);
                 copatiDvigalo.writeValue(4);
