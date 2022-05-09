@@ -18,10 +18,14 @@ package com.punchthrough.blestarterappandroid
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGattCharacteristic
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -56,6 +60,12 @@ class BleOperationsActivity : AppCompatActivity() {
 
     private lateinit var device: BluetoothDevice
     private val dateFormatter = SimpleDateFormat("MMM d, HH:mm:ss", Locale.US)
+    lateinit var notificationChannel: NotificationChannel
+    lateinit var notificationManager: NotificationManager
+    lateinit var builder: Notification.Builder
+    private val channelId = "12345"
+    private val description = "Test Notification"
+
     private val characteristics by lazy {
         ConnectionManager.servicesOnDevice(device)?.flatMap { service ->
             service.characteristics ?: listOf()
@@ -91,9 +101,12 @@ class BleOperationsActivity : AppCompatActivity() {
         supportActionBar?.apply {
             setDisplayHomeAsUpEnabled(true)
             setDisplayShowTitleEnabled(true)
+            // Nekaj vmes
             title = getString(R.string.ble_playground)
         }
         setupRecyclerView()
+
+        /*
         request_mtu_button.setOnClickListener {
             if (mtu_field.text.isNotEmpty() && mtu_field.text.isNotBlank()) {
                 mtu_field.text.toString().toIntOrNull()?.let { mtu ->
@@ -105,6 +118,7 @@ class BleOperationsActivity : AppCompatActivity() {
             }
             hideKeyboard()
         }
+        */
     }
 
     override fun onDestroy() {
@@ -114,6 +128,7 @@ class BleOperationsActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        Log.i("TAG", "Option selected ${item}")
         when (item.itemId) {
             android.R.id.home -> {
                 onBackPressed()
@@ -201,6 +216,7 @@ class BleOperationsActivity : AppCompatActivity() {
         hexField.showKeyboard()
     }
 
+    // TU
     private val connectionEventListener by lazy {
         ConnectionEventListener().apply {
             onDisconnect = {
