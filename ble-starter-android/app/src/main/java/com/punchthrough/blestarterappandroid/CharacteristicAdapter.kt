@@ -39,6 +39,8 @@ class CharacteristicAdapter(
         characteristicMap.put("f72e3316-b407-11ec-b909-0242ac120002", "stopnice")
         characteristicMap.put("05f99232-b408-11ec-b909-0242ac120002", "dvigalo")
         characteristicMap.put("f7a9b8d6-b408-11ec-b909-0242ac120002", "idle")
+        characteristicMap.put("44f709ee-d2bf-11ec-9d64-0242ac120002", "Uncertain")
+
         val view = parent.context.layoutInflater.inflate(
             R.layout.row_characteristic,
             parent,

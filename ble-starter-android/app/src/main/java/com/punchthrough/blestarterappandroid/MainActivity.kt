@@ -31,6 +31,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -40,9 +41,11 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SimpleItemAnimator
 import com.punchthrough.blestarterappandroid.ble.ConnectionEventListener
 import com.punchthrough.blestarterappandroid.ble.ConnectionManager
+import kotlinx.android.synthetic.main.activity_main.connect_button
 import kotlinx.android.synthetic.main.activity_main.scan_button
 import kotlinx.android.synthetic.main.activity_main.scan_results_recycler_view
 import org.jetbrains.anko.alert
+import org.jetbrains.anko.startActivity
 import timber.log.Timber
 
 private const val ENABLE_BLUETOOTH_REQUEST_CODE = 1
@@ -55,7 +58,7 @@ class MainActivity : AppCompatActivity() {
      *******************************************/
 
     private val bluetoothAdapter: BluetoothAdapter by lazy {
-        val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        val bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
         bluetoothManager.adapter
     }
 
@@ -71,7 +74,17 @@ class MainActivity : AppCompatActivity() {
         set(value) {
             field = value
             runOnUiThread { scan_button.text = if (value) "Stop Scan" else "Start Scan" }
+            // runOnUiThread { tvStatusBle.text  = if(value != lastValue) value.toString() else lastValue }
         }
+
+    /*
+    // We get someValue from a function that detects change in bluetooth property
+    private var predictionValue = someValue
+        set(value){
+            runOnUiThread { tvStatusBle.text  = if(value != lastValue) value else lastValue }
+        }
+    */
+
 
     private val scanResults = mutableListOf<ScanResult>()
     private val scanResultAdapter: ScanResultAdapter by lazy {
@@ -80,8 +93,12 @@ class MainActivity : AppCompatActivity() {
                 stopBleScan()
             }
             with(result.device) {
+                // Dodaj da se izbrano polje obarva modro
                 Timber.w("Connecting to $address")
-                ConnectionManager.connect(this, this@MainActivity)
+                connect_button.setOnClickListener {
+                    ConnectionManager.connect(this, this@MainActivity)
+                }
+                //ConnectionManager.connect(this, this@MainActivity)
             }
         }
     }
@@ -99,6 +116,8 @@ class MainActivity : AppCompatActivity() {
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
         }
+        promptEnableBluetooth()
+        requestLocationPermission()
         scan_button.setOnClickListener { if (isScanning) stopBleScan() else startBleScan() }
         Log.i("MainActivity", "Opened main activity")
         //
@@ -117,7 +136,7 @@ class MainActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
             ENABLE_BLUETOOTH_REQUEST_CODE -> {
-                if (resultCode != Activity.RESULT_OK) {
+                if (resultCode != RESULT_OK) {
                     promptEnableBluetooth()
                 }
             }
@@ -243,10 +262,14 @@ class MainActivity : AppCompatActivity() {
     private val connectionEventListener by lazy {
         ConnectionEventListener().apply {
             onConnectionSetupComplete = { gatt ->
-                Intent(this@MainActivity, BleOperationsActivity::class.java).also {
+                //connect_button.setOnClickListener {
+                 //   ConnectionManager.connect(gatt.device, this@MainActivity)
+                    Intent(this@MainActivity, BleOperationsActivity::class.java).also {
                     it.putExtra(BluetoothDevice.EXTRA_DEVICE, gatt.device)
-                    startActivity(it)
-                }
+                     startActivity(it) }
+
+
+                //}
                 ConnectionManager.unregisterListener(this)
             }
             onDisconnect = {

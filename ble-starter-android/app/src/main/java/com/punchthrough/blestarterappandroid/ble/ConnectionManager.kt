@@ -438,6 +438,7 @@ object ConnectionManager {
             }
         }
 
+
         override fun onCharacteristicChanged(
             gatt: BluetoothGatt,
             characteristic: BluetoothGattCharacteristic

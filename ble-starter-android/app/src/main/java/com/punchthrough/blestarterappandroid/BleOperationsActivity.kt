@@ -30,27 +30,29 @@ import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SimpleItemAnimator
 import com.punchthrough.blestarterappandroid.ble.ConnectionEventListener
 import com.punchthrough.blestarterappandroid.ble.ConnectionManager
+import com.punchthrough.blestarterappandroid.ble.ConnectionManager.readCharacteristic
 import com.punchthrough.blestarterappandroid.ble.isIndicatable
 import com.punchthrough.blestarterappandroid.ble.isNotifiable
 import com.punchthrough.blestarterappandroid.ble.isReadable
 import com.punchthrough.blestarterappandroid.ble.isWritable
 import com.punchthrough.blestarterappandroid.ble.isWritableWithoutResponse
 import com.punchthrough.blestarterappandroid.ble.toHexString
-import kotlinx.android.synthetic.main.activity_ble_operations.characteristics_recycler_view
-import kotlinx.android.synthetic.main.activity_ble_operations.log_scroll_view
-import kotlinx.android.synthetic.main.activity_ble_operations.log_text_view
-import kotlinx.android.synthetic.main.activity_ble_operations.mtu_field
-import kotlinx.android.synthetic.main.activity_ble_operations.request_mtu_button
+import kotlinx.android.synthetic.main.activity_ble_operations.tvStopnice
+
 import org.jetbrains.anko.alert
+import org.jetbrains.anko.find
 import org.jetbrains.anko.noButton
+import org.jetbrains.anko.runOnUiThread
 import org.jetbrains.anko.selector
 import org.jetbrains.anko.yesButton
+import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -65,6 +67,24 @@ class BleOperationsActivity : AppCompatActivity() {
     lateinit var builder: Notification.Builder
     private val channelId = "12345"
     private val description = "Test Notification"
+
+    // Initialize variables for predictions
+    private var noHoja = 0;
+    private var noStopnice = 0;
+    private var noDvigalo = 0;
+    private var noIdle = 0;
+    private var noUncertain = 0;
+    // Insert activity values
+    private lateinit var tvHojaValue: TextView
+    private lateinit var tvIdleValue: TextView
+    private lateinit var tvStopniceValue: TextView
+    private lateinit var tvDvigaloValue: TextView
+    private lateinit var tvUncertainValue: TextView
+    private lateinit var tvCurrActValue : TextView
+    private lateinit var lastCurrActValue : TextView
+    private lateinit var tvLastActValue : TextView
+    private lateinit var tvActTimeValue : TextView
+
 
     private val characteristicMap = mutableMapOf<String, String>()
 
@@ -87,33 +107,63 @@ class BleOperationsActivity : AppCompatActivity() {
         }.toMap()
     }
     private val characteristicAdapter: CharacteristicAdapter by lazy {
-        CharacteristicAdapter(characteristics) {  characteristic ->
-            showCharacteristicOptions(characteristic)
-        }
-
+        CharacteristicAdapter(characteristics) {}
+                //characteristic ->
+            //showCharacteristicOptions(characteristic)
     }
     private var notifyingCharacteristics = mutableListOf<UUID>()
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         ConnectionManager.registerListener(connectionEventListener)
         super.onCreate(savedInstanceState)
 
-        characteristicMap.put("05ed8326-b407-11ec-b909-0242ac120002", "hoja")
-        characteristicMap.put("f72e3316-b407-11ec-b909-0242ac120002", "stopnice")
-        characteristicMap.put("05f99232-b408-11ec-b909-0242ac120002", "dvigalo")
-        characteristicMap.put("f7a9b8d6-b408-11ec-b909-0242ac120002", "idle")
+        characteristicMap.put("05ed8326-b407-11ec-b909-0242ac120002", "Hoja")
+        characteristicMap.put("f72e3316-b407-11ec-b909-0242ac120002", "Stopnice")
+        characteristicMap.put("05f99232-b408-11ec-b909-0242ac120002", "Dvigalo")
+        characteristicMap.put("f7a9b8d6-b408-11ec-b909-0242ac120002", "Idle")
+        characteristicMap.put("44f709ee-d2bf-11ec-9d64-0242ac120002", "Uncertain")
+
+        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
             ?: error("Missing BluetoothDevice from MainActivity!")
 
+        // Set correct activity
         setContentView(R.layout.activity_ble_operations)
+
+        tvHojaValue = findViewById(R.id.tvHojaValue)
+        tvIdleValue = findViewById(R.id.tvIdleValue)
+        tvStopniceValue = findViewById(R.id.tvStopniceValue)
+        tvDvigaloValue = findViewById(R.id.tvDvigaloValue)
+        tvUncertainValue = findViewById(R.id.tvUncertainValue)
+        tvCurrActValue = findViewById(R.id.tvCurrActValue)
+        tvLastActValue = findViewById(R.id.tvLastActValue)
+        tvActTimeValue = findViewById((R.id.tvActTimeValue))
+
+
+        // Initial read of characteristics
+        readCharacteristic(device, characteristics[3])
+        readCharacteristic(device, characteristics[4])
+        readCharacteristic(device, characteristics[5])
+        readCharacteristic(device, characteristics[6])
+        readCharacteristic(device, characteristics[7])
+
         supportActionBar?.apply {
             setDisplayHomeAsUpEnabled(true)
             setDisplayShowTitleEnabled(true)
-            // Nekaj vmes
+            //setLogo(R.mipmap.ic_launcher_foreground)
+            //setDisplayUseLogoEnabled(true)
             title = getString(R.string.ble_playground)
         }
-        setupRecyclerView()
+
+        // Here we define all characteristics where we want notifications
+        ConnectionManager.enableNotifications(device, characteristics[3])
+        ConnectionManager.enableNotifications(device, characteristics[4])
+        ConnectionManager.enableNotifications(device, characteristics[5])
+        ConnectionManager.enableNotifications(device, characteristics[6])
+        ConnectionManager.enableNotifications(device, characteristics[7])
+        //setupRecyclerView()
 
         /*
         request_mtu_button.setOnClickListener {
@@ -137,7 +187,7 @@ class BleOperationsActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        Log.i("TAG", "Option selected ${item}")
+        Log.i("TAG", "Option selected $item")
         when (item.itemId) {
             android.R.id.home -> {
                 onBackPressed()
@@ -147,36 +197,17 @@ class BleOperationsActivity : AppCompatActivity() {
         return super.onOptionsItemSelected(item)
     }
 
-    private fun setupRecyclerView() {
-        characteristics_recycler_view.apply {
-            adapter = characteristicAdapter
-            layoutManager = LinearLayoutManager(
-                this@BleOperationsActivity,
-                RecyclerView.VERTICAL,
-                false
-            )
-            isNestedScrollingEnabled = false
-        }
 
-        val animator = characteristics_recycler_view.itemAnimator
-        if (animator is SimpleItemAnimator) {
-            animator.supportsChangeAnimations = false
-        }
-    }
+
 
     @SuppressLint("SetTextI18n")
     private fun log(message: String) {
         val formattedMessage = String.format("%s: %s", dateFormatter.format(Date()), message)
-        runOnUiThread {
-            val currentLogText = if (log_text_view.text.isEmpty()) {
-                "Beginning of log."
-            } else {
-                log_text_view.text
-            }
-            log_text_view.text = "$currentLogText\n$formattedMessage"
-            log_scroll_view.post { log_scroll_view.fullScroll(View.FOCUS_DOWN) }
-        }
+
     }
+
+
+
 
     private fun showCharacteristicOptions(characteristic: BluetoothGattCharacteristic) {
         characteristicProperties[characteristic]?.let { properties ->
@@ -184,7 +215,7 @@ class BleOperationsActivity : AppCompatActivity() {
                 when (properties[i]) {
                     CharacteristicProperty.Readable -> {
                         log("Reading from ${ characteristicMap[characteristic.uuid.toString()]}")
-                        ConnectionManager.readCharacteristic(device, characteristic)
+                        readCharacteristic(device, characteristic)
                     }
                     CharacteristicProperty.Writable, CharacteristicProperty.WritableWithoutResponse -> {
                         showWritePayloadDialog(characteristic)
@@ -201,7 +232,10 @@ class BleOperationsActivity : AppCompatActivity() {
                 }
             }
         }
+
+
     }
+
 
     @SuppressLint("InflateParams")
     private fun showWritePayloadDialog(characteristic: BluetoothGattCharacteristic) {
@@ -225,7 +259,69 @@ class BleOperationsActivity : AppCompatActivity() {
         hexField.showKeyboard()
     }
 
-    // TU
+    private fun updateUiDecks(charName: String?){
+        val sdf = SimpleDateFormat("HH:mm:ss")
+        val currentDate = sdf.format(Date())
+        tvCurrActValue.text = charName.toString()
+        tvLastActValue.text = currentDate
+    }
+
+    // Function that catch new values from Arduino Nano 33 BLE
+    private fun getNewValues(charName : String?, charValue: Int){
+        when (charName) {
+            "Hoja" -> {
+                this.tvHojaValue.text = charValue.toString()
+                if (charValue == 1){
+                    updateUiDecks(charName)
+
+                }
+            }
+            "Idle" -> {
+                this.tvIdleValue.text = charValue.toString()
+                if (charValue == 1){
+                    updateUiDecks(charName)
+                }
+            }
+            "Stopnice" -> {
+                this.tvStopniceValue.text = charValue.toString()
+                if (charValue == 1){
+                    updateUiDecks(charName)
+                }
+            }
+            "Dvigalo" -> {
+                this.tvDvigaloValue.text = charValue.toString()
+                if (charValue == 1){
+                    updateUiDecks(charName)
+                }
+            }
+            "Uncertain" -> {
+                this.tvUncertainValue.text = charValue.toString()
+                if (charValue == 1){
+                    updateUiDecks(charName)
+                }
+            }
+        }
+
+        /*
+        if (tvCurrActValue.toString() != charValue.toString()){
+            this.tvCurrActValue.text = charName.toString()
+        }
+        */
+
+
+    }
+
+    private fun readChar(device: BluetoothDevice, characteristic: BluetoothGattCharacteristic){
+        /* Function reads characteristics and return a string */
+        var charValue = characteristics[3].value.toHexString()
+        //var charStr = charValue.toString()
+        Log.i("READVALUE", "Char = $charValue")
+    }
+
+
+
+
+    @OptIn(ExperimentalStdlibApi::class)
     private val connectionEventListener by lazy {
         ConnectionEventListener().apply {
             onDisconnect = {
@@ -237,30 +333,52 @@ class BleOperationsActivity : AppCompatActivity() {
                     }.show()
                 }
             }
-
             onCharacteristicRead = { _, characteristic ->
-                log("Read from ${characteristicMap[characteristic.uuid.toString()]}: ${characteristic.value.toHexString()}")
-            }
+                // Get the name and value of changed characteristic
+                var characteristicName = characteristicMap[characteristic.uuid.toString()]
+                var strReceived = characteristic.value.toHexString();
+                // Parse string to get HEX value
+                strReceived = strReceived.substring(2,4)
+                // Convert HEX to Int
+                var intReceived = strReceived.toInt(16)
 
-            onCharacteristicWrite = { _, characteristic ->
-                log("Wrote to ${characteristic.uuid}")
-            }
 
-            onMtuChanged = { _, mtu ->
-                log("MTU updated to $mtu")
+                Log.i("OPERATIONS","Value read on ${characteristicName}: ${intReceived}")
+                // Pass new values to activity
+                runOnUiThread{
+                    getNewValues(characteristicName, intReceived)
+                }
             }
 
             onCharacteristicChanged = { _, characteristic ->
-                log("Value changed on ${characteristic.uuid}: ${characteristic.value.toHexString()}")
+
+                // Get the name and value of changed characteristic
+                var characteristicName = characteristicMap[characteristic.uuid.toString()]
+                var strReceived = characteristic.value.toHexString();
+                // Parse string to get HEX value
+                strReceived = strReceived.substring(2,4)
+                // Convert HEX to Int
+                var intReceived = strReceived.toInt(16)
+
+
+                Log.i("OPERATIONS","Value changed on ${characteristicName}: ${intReceived}")
+                // Pass new values to activity
+                runOnUiThread{
+                    getNewValues(characteristicName, intReceived)
+                }
+
+
+
+
             }
 
             onNotificationsEnabled = { _, characteristic ->
-                log("Enabled notifications on ${characteristic.uuid}")
+                Log.i("OPERATIONS","Enabled notifications on ${characteristicMap[characteristic.uuid.toString()]}")
                 notifyingCharacteristics.add(characteristic.uuid)
             }
 
             onNotificationsDisabled = { _, characteristic ->
-                log("Disabled notifications on ${characteristic.uuid}")
+                Log.i("OPERATIONS","Disabled notifications on ${characteristicMap[characteristic.uuid.toString()]}")
                 notifyingCharacteristics.remove(characteristic.uuid)
             }
         }

@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   ~ Copyright 2019 Punch Through Design LLC
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,91 +20,222 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".BleOperationsActivity">
-
-    <LinearLayout
-        android:id="@+id/mtu_container"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:orientation="horizontal"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content">
-
-        <EditText
-            android:id="@+id/mtu_field"
-            android:hint="MTU value"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:importantForAutofill="no"
-            android:inputType="number"
-            android:digits="01234567890" />
-
-        <Button
-            android:id="@+id/request_mtu_button"
-            android:text="Request MTU"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-
-    </LinearLayout>
+    tools:context=".BleOperationsActivity"
+    >
 
     <TextView
-        android:id="@+id/characteristics_title"
+        android:id="@+id/tvCurrActValue"
+        android:layout_width="160dp"
+        android:layout_height="60dp"
+        android:layout_marginTop="8dp"
+        android:textAlignment="center"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="@+id/tvCurrActText"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="@+id/tvCurrActText"
+        app:layout_constraintTop_toBottomOf="@+id/tvCurrActText"
+        tools:text="No activity"
+        />
+
+    <TextView
+        android:id="@+id/tvActTimeText"
+        android:layout_width="160dp"
+        android:layout_height="34dp"
+        android:layout_marginEnd="16dp"
+        android:text="Active Time"
+        android:textAlignment="center"
+        android:textSize="20sp"
+        app:layout_constraintBottom_toBottomOf="@+id/tvCurrActText"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/tvCurrActText"
+        app:layout_constraintVertical_bias="0.0"
+        />
+
+    <TextView
+        android:id="@+id/tvLastActText"
+        android:layout_width="160dp"
+        android:layout_height="34dp"
+        android:layout_marginTop="40dp"
+        android:text="Last Activity"
+        android:textAlignment="center"
+
+        android:textSize="20sp"
+        app:layout_constraintEnd_toEndOf="@+id/tvCurrActText"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toStartOf="@+id/tvCurrActText"
+        app:layout_constraintTop_toBottomOf="@+id/tvCurrActValue"
+        />
+
+    <TextView
+        android:id="@+id/tvHoja"
+        android:layout_width="135dp"
+        android:layout_height="30dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="64dp"
+        android:text="Hoja"
+        android:textAlignment="viewStart"
+        android:textSize="20sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="Hoja"
+        />
+
+    <TextView
+        android:id="@+id/tvStopnice"
+        android:layout_width="135dp"
+        android:layout_height="30dp"
+        android:layout_marginTop="8dp"
+        android:text="Stopnice"
+        android:textAlignment="viewStart"
+        android:textSize="20sp"
+        app:layout_constraintStart_toStartOf="@+id/tvHoja"
+        app:layout_constraintTop_toBottomOf="@+id/tvIdle"
+        />
+
+    <TextView
+        android:id="@+id/tvDvigalo"
+        android:layout_width="135dp"
+        android:layout_height="30dp"
+        android:layout_marginTop="8dp"
+        android:text="Dvigalo"
+        android:textAlignment="viewStart"
+        android:textSize="20sp"
+        app:layout_constraintStart_toStartOf="@+id/tvHoja"
+        app:layout_constraintTop_toBottomOf="@+id/tvStopnice"
+        />
+
+    <TextView
+        android:id="@+id/tvIdle"
+        android:layout_width="135dp"
+        android:layout_height="30dp"
+        android:layout_marginTop="8dp"
+        android:text="Idle"
+        android:textAlignment="viewStart"
+        android:textSize="20sp"
+        app:layout_constraintStart_toStartOf="@+id/tvHoja"
+        app:layout_constraintTop_toBottomOf="@+id/tvHoja"
+        />
+
+    <!-- Right side -->
+
+    <TextView
+        android:id="@+id/tvUncertain"
+        android:layout_width="135dp"
+        android:layout_height="30dp"
+        android:layout_marginTop="8dp"
+        android:text="Uncertain"
+        android:textAlignment="viewStart"
+        android:textSize="20sp"
+        app:layout_constraintStart_toStartOf="@+id/tvHoja"
+        app:layout_constraintTop_toBottomOf="@+id/tvDvigalo"
+        />
+
+    <TextView
+        android:id="@+id/tvCurrActText"
+        android:layout_width="160dp"
+        android:layout_height="34dp"
+        android:layout_marginTop="32dp"
+        android:text="Current Activity"
+        android:textAlignment="center"
+        android:textSize="20sp"
+        app:layout_constraintStart_toStartOf="@+id/tvHoja"
+        app:layout_constraintTop_toBottomOf="@+id/tvUncertain"
+        />
+
+    <TextView
+        android:id="@+id/tvHojaValue"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:layout_marginStart="16dp"
-        android:text="Characteristics"
+        android:layout_marginStart="4dp"
+        android:text=""
+        android:textSize="24sp"
+        app:layout_constraintBottom_toBottomOf="@+id/tvHoja"
+        app:layout_constraintStart_toEndOf="@+id/tvHoja"
+        app:layout_constraintTop_toTopOf="@+id/tvHoja"
+        app:layout_constraintVertical_bias="0.0"
+        tools:text="1"
+        />
+
+    <TextView
+        android:id="@+id/tvIdleValue"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="24sp"
+
+        app:layout_constraintBottom_toBottomOf="@+id/tvIdle"
+        app:layout_constraintStart_toStartOf="@+id/tvHojaValue"
+        app:layout_constraintTop_toTopOf="@+id/tvIdle"
+        app:layout_constraintVertical_bias="0.0"
+        tools:text="1"
+        />
+
+    <TextView
+        android:id="@+id/tvStopniceValue"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="24sp"
+
+        app:layout_constraintBottom_toBottomOf="@+id/tvStopnice"
+        app:layout_constraintStart_toStartOf="@+id/tvHojaValue"
+        app:layout_constraintTop_toTopOf="@+id/tvStopnice"
+        tools:text="1"
+        />
+
+    <TextView
+        android:id="@+id/tvDvigaloValue"
+        android:layout_width="14dp"
+        android:layout_height="36dp"
+        android:text=""
+        android:textSize="24sp"
+
+        app:layout_constraintBottom_toBottomOf="@+id/tvDvigalo"
+        app:layout_constraintStart_toStartOf="@+id/tvHojaValue"
+        app:layout_constraintTop_toTopOf="@+id/tvDvigalo"
+        tools:text="1"
+        />
+
+    <TextView
+        android:id="@+id/tvUncertainValue"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="24sp"
+
+        app:layout_constraintBottom_toBottomOf="@+id/tvUncertain"
+        app:layout_constraintStart_toStartOf="@+id/tvHojaValue"
+        app:layout_constraintTop_toTopOf="@+id/tvUncertain"
+        tools:text="1"
+        />
+
+    <TextView
+        android:id="@+id/tvLastActValue"
+        android:layout_width="161dp"
+        android:layout_height="68dp"
+        android:layout_marginTop="8dp"
+        android:textAlignment="center"
+        android:textSize="20sp"
         android:textStyle="bold"
-        android:textSize="16sp"
-        app:layout_constraintTop_toBottomOf="@id/mtu_container"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintEnd_toEndOf="@+id/tvLastActText"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="@+id/tvLastActText"
+        app:layout_constraintTop_toBottomOf="@+id/tvLastActText"
+        tools:text="No activity yet"
+        />
 
-    <LinearLayout
-        app:layout_constraintTop_toBottomOf="@id/characteristics_title"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:orientation="vertical"
-        android:layout_width="match_parent"
-        android:layout_height="0dp">
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/characteristics_recycler_view"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:scrollbarFadeDuration="0"
-            android:scrollbars="vertical"
-            tools:listitem="@layout/row_characteristic" />
-
-        <TextView
-            android:id="@+id/log_title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:layout_marginStart="16dp"
-            android:text="Log"
-            android:textStyle="bold"
-            android:textSize="16sp" />
-
-        <ScrollView
-            android:id="@+id/log_scroll_view"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:padding="4dp">
-
-            <TextView
-                android:id="@+id/log_text_view"
-                android:scrollbars="vertical"
-                android:gravity="bottom"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
-
-        </ScrollView>
-
-    </LinearLayout>
+    <TextView
+        android:id="@+id/tvActTimeValue"
+        android:layout_width="160dp"
+        android:layout_height="60dp"
+        android:textAlignment="center"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toBottomOf="@+id/tvCurrActValue"
+        app:layout_constraintStart_toStartOf="@+id/tvActTimeText"
+        app:layout_constraintTop_toTopOf="@+id/tvCurrActValue"
+        tools:text="No activity yet"
+        />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

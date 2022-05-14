@@ -15,6 +15,7 @@
   -->
 
 <resources>
-    <string name="app_name">BLE Test</string>
-    <string name="ble_playground">BLE Playground 2</string>
+    <string name="app_name">SmartSlippers</string>
+    <string name="ble_playground">Home</string>
+    <string name="connect_button_string">Connect</string>
 </resources>

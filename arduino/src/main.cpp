@@ -46,6 +46,8 @@ static float inference_buffer[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE];
 const int ledPin = LED_BUILTIN; // the number of the LED pin
 int ledState = LOW;
 unsigned long previousMillis = 0;
+String lastPredictionStr = "";
+String predictionStr = "";
 
 void blink(long interval, int ledPin);
 
@@ -56,10 +58,11 @@ BLEIntCharacteristic copatiHoja("05ed8326-b407-11ec-b909-0242ac120002", BLERead 
 BLEIntCharacteristic copatiStopnice("f72e3316-b407-11ec-b909-0242ac120002", BLERead | BLENotify);
 BLEIntCharacteristic copatiDvigalo("05f99232-b408-11ec-b909-0242ac120002", BLERead | BLENotify);
 BLEIntCharacteristic copatiIdle("f7a9b8d6-b408-11ec-b909-0242ac120002", BLERead | BLENotify);
+BLEIntCharacteristic copatiUncertain("44f709ee-d2bf-11ec-9d64-0242ac120002", BLERead | BLENotify);
 
 /* Forward declaration */
 void run_inference_background();
-
+void connect_BLE();
 /**
  * @brief      Arduino setup function
  */
@@ -103,14 +106,16 @@ void setup()
     copatiService.addCharacteristic(copatiStopnice);
     copatiService.addCharacteristic(copatiDvigalo);
     copatiService.addCharacteristic(copatiIdle);
+    copatiService.addCharacteristic(copatiUncertain);
     BLE.addService(copatiService);
     BLE.advertise();
     Serial.println("Bluetooth device active, waiting for connections...");
-    
+
     digitalWrite(RED, LOW);
     while (1)
-    {   blink(400, RED);
-        //Serial.println("Not connected...");
+    {
+        blink(400, RED);
+        // Serial.println("Not connected...");
         central = BLE.central();
         if (central)
         {
@@ -205,12 +210,13 @@ void run_inference_background()
 
         // print the predictions
         ei_printf("Predictions ");
-        ///ei_printf("(DSP: %d ms., Classification: %d ms., Anomaly: %d ms.)",
-        ///          result.timing.dsp, result.timing.classification, result.timing.anomaly);
-        ///ei_printf(": ");
+        /// ei_printf("(DSP: %d ms., Classification: %d ms., Anomaly: %d ms.)",
+        ///           result.timing.dsp, result.timing.classification, result.timing.anomaly);
+        /// ei_printf(": ");
 
         // ei_classifier_smooth_update yields the predicted label
         const char *prediction = ei_classifier_smooth_update(&smooth, &result);
+        predictionStr = prediction;
         ei_printf("%s ", prediction);
         // print the cumulative results
         ei_printf(" [ ");
@@ -230,44 +236,60 @@ void run_inference_background()
 
         if (central.connected())
         {
+            if (predictionStr != lastPredictionStr)
+            {
+                if (strcmp(prediction, "hoja") == 0)
+                {
+                    ei_printf("Prediction: hoja \n");
+                    copatiHoja.writeValue(1);
+                    copatiStopnice.writeValue(0);
+                    copatiDvigalo.writeValue(0);
+                    copatiIdle.writeValue(0);
+                    copatiUncertain.writeValue(0);
+                }
+                else if (strcmp(prediction, "stopnice") == 0)
+                {
+                    ei_printf("Prediction: stopnice \n");
+                    copatiStopnice.writeValue(1);
+                    copatiHoja.writeValue(0);
+                    copatiDvigalo.writeValue(0);
+                    copatiIdle.writeValue(0);
+                    copatiUncertain.writeValue(0);
+                }
+                else if (strcmp(prediction, "dvigalo") == 0)
+                {
+                    ei_printf("Prediction: dvigalo \n");
+                    copatiDvigalo.writeValue(1);
+                    copatiHoja.writeValue(0);
+                    copatiStopnice.writeValue(0);
+                    copatiIdle.writeValue(0);
+                    copatiUncertain.writeValue(0);
+                }
+                else if (strcmp(prediction, "idle") == 0)
+                {
+                    ei_printf("Prediction: idle \n");
+                    copatiIdle.writeValue(1);
+                    copatiHoja.writeValue(0);
+                    copatiStopnice.writeValue(0);
+                    copatiDvigalo.writeValue(0);
+                    copatiUncertain.writeValue(0);
+                }
+                else if (strcmp(prediction, "uncertain") == 0)
+                {
+                    ei_printf("Prediction: uncertain \n");
+                    copatiUncertain.writeValue(1);
+                    copatiHoja.writeValue(0);
+                    copatiStopnice.writeValue(0);
+                    copatiDvigalo.writeValue(0);
+                    copatiIdle.writeValue(0);
+                }
+
+                lastPredictionStr = predictionStr;
+            }
             ei_printf("Sending data to central\n");
             // batteryLevelChar.writeValue()
-            //ei_printf("Prediction: %s \n", prediction);
-            if (strcmp(prediction, "hoja") == 0)
-            {   ei_printf("Prediction: hoja \n");
-                copatiHoja.writeValue(1);
-                copatiStopnice.writeValue(0);
-                copatiDvigalo.writeValue(0);
-                copatiIdle.writeValue(0);
-            }
-            else if (strcmp(prediction, "stopnice") == 0)
-            {   ei_printf("Prediction: stopnice \n");
-                copatiHoja.writeValue(0);
-                copatiStopnice.writeValue(1);
-                copatiDvigalo.writeValue(0);
-                copatiIdle.writeValue(0);
-            }
-            else if (strcmp(prediction, "dvigalo") == 0)
-            {   ei_printf("Prediction: dvigalo \n");
-                copatiHoja.writeValue(0);
-                copatiStopnice.writeValue(0);
-                copatiDvigalo.writeValue(1);
-                copatiIdle.writeValue(0);
-            }
-            else if (strcmp(prediction, "idle") == 0)
-            {   ei_printf("Prediction: idle \n");
-                copatiHoja.writeValue(0);
-                copatiStopnice.writeValue(0);
-                copatiDvigalo.writeValue(0);
-                copatiIdle.writeValue(1);
-            }
-            else if (strcmp(prediction, "uncertain") == 0)
-            {   ei_printf("Prediction: uncertain \n");
-                copatiHoja.writeValue(2);
-                copatiStopnice.writeValue(3);
-                copatiDvigalo.writeValue(4);
-                copatiIdle.writeValue(5);
-            }
+            // ei_printf("Prediction: %s \n", prediction);
+
             //.writeValue(prediction[0]);
         }
         delay(run_inference_every_ms);
@@ -282,9 +304,13 @@ void run_inference_background()
  * @param[in]  debug  Get debug info if true
  */
 void loop()
-{   
+{
     while (1)
-    {   
+    {
+        if (!BLE.central())
+        {
+            connect_BLE();
+        }
         // Determine the next tick (and then sleep later)
         uint64_t next_tick = micros() + (EI_CLASSIFIER_INTERVAL_MS * 1000);
 
@@ -341,5 +367,29 @@ void blink(long interval, int ledPin)
 
         // set the LED with the ledState of the variable:
         digitalWrite(ledPin, ledState);
+    }
+}
+
+void connect_BLE()
+{
+    digitalWrite(RED, LOW);
+    digitalWrite(GREEN, HIGH);
+    while (1)
+    {
+        blink(400, RED);
+        // Serial.println("Not connected...");
+        central = BLE.central();
+        if (central)
+        {
+            digitalWrite(RED, HIGH);
+            digitalWrite(BLUE, HIGH);
+            digitalWrite(GREEN, LOW);
+            digitalWrite(LED_PWR, HIGH);
+
+            Serial.print("Connected to central: ");
+            Serial.println(central.address());
+
+            break;
+        }
     }
 }
