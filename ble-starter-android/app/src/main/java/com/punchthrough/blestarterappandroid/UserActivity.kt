@@ -16,11 +16,51 @@
 
 package com.punchthrough.blestarterappandroid
 
-import java.text.SimpleDateFormat
-import java.util.Date
+class UserActivity(activityName: String) {
+    val activityName : String = activityName
 
-class UserActivity {
-    val sdf = SimpleDateFormat("HH:mm:ss")
-    val currentDate = sdf.format(Date())
-    val timeOfLastActivity = currentDate
+    var startTime : Long = 0L
+    var elapsedTime : Long = 0L // Time elapsed in this period of this activity
+    var fullTime : Long = 0L // Total elapsed time in this activity
+    var currentTime : Long = 0L // Current total elapsed time in the state
+
+    fun start(): Long {
+        startTime = System.currentTimeMillis()
+        return startTime
+    }
+
+    fun stop(): Long {
+        if (startTime != 0L){
+            elapsedTime = System.currentTimeMillis() - startTime
+            fullTime += elapsedTime
+            startTime = 0L
+        }
+        else{
+            elapsedTime = 0L;
+        }
+
+
+        return elapsedTime
+
+    }
+
+    fun current(): String {
+        if (startTime != 0L) {
+            currentTime = fullTime + (System.currentTimeMillis() - startTime)
+        } else if (startTime == 0L) {
+            currentTime = fullTime
+        }
+
+        var seconds = currentTime / 1000
+        var minutes = seconds / 60
+        var hours = minutes / 60
+        var secondsLeft = seconds - (60 * minutes)
+        val minutesLeft = minutes - (60 * hours)
+
+        return "${hours}h ${minutesLeft}min ${secondsLeft}s"
+        //return fullTime
+    }
+
+
+
 }

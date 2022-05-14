@@ -74,16 +74,21 @@ class BleOperationsActivity : AppCompatActivity() {
     private var noDvigalo = 0;
     private var noIdle = 0;
     private var noUncertain = 0;
+
     // Insert activity values
     private lateinit var tvHojaValue: TextView
     private lateinit var tvIdleValue: TextView
     private lateinit var tvStopniceValue: TextView
     private lateinit var tvDvigaloValue: TextView
     private lateinit var tvUncertainValue: TextView
-    private lateinit var tvCurrActValue : TextView
-    private lateinit var lastCurrActValue : TextView
-    private lateinit var tvLastActValue : TextView
-    private lateinit var tvActTimeValue : TextView
+    private lateinit var tvCurrActValue: TextView
+    private lateinit var lastCurrActValue: TextView
+    private lateinit var tvLastActValue: TextView
+    private lateinit var tvActTimeValue: TextView
+
+    val hojaActivity = UserActivity("Hoja")
+
+    private var lastActivityTime: Long = System.currentTimeMillis()
 
 
     private val characteristicMap = mutableMapOf<String, String>()
@@ -108,8 +113,8 @@ class BleOperationsActivity : AppCompatActivity() {
     }
     private val characteristicAdapter: CharacteristicAdapter by lazy {
         CharacteristicAdapter(characteristics) {}
-                //characteristic ->
-            //showCharacteristicOptions(characteristic)
+        //characteristic ->
+        //showCharacteristicOptions(characteristic)
     }
     private var notifyingCharacteristics = mutableListOf<UUID>()
 
@@ -163,21 +168,32 @@ class BleOperationsActivity : AppCompatActivity() {
         ConnectionManager.enableNotifications(device, characteristics[5])
         ConnectionManager.enableNotifications(device, characteristics[6])
         ConnectionManager.enableNotifications(device, characteristics[7])
-        //setupRecyclerView()
 
-        /*
-        request_mtu_button.setOnClickListener {
-            if (mtu_field.text.isNotEmpty() && mtu_field.text.isNotBlank()) {
-                mtu_field.text.toString().toIntOrNull()?.let { mtu ->
-                    log("Requesting for MTU value of $mtu")
-                    ConnectionManager.requestMtu(device, mtu)
-                } ?: log("Invalid MTU value: ${mtu_field.text}")
-            } else {
-                log("Please specify a numeric value for desired ATT MTU (23-517)")
+
+        // Declaring Main Thread
+        Thread(Runnable {
+            while (true) {
+                // Updating Text View at current
+                // iteration
+                runOnUiThread {
+                    if (tvCurrActValue.text == "Uncertain") {
+                        tvLastActValue.text = timeFromActivity(lastActivityTime)
+
+                    }
+                    tvActTimeValue.text = hojaActivity.current()
+                }
+
+                // Thread sleep for 1 sec
+                Thread.sleep(1000)
+                // Updating Text View at current
+                // iteration
+                //runOnUiThread{ tv.text = msg2 }
+                // Thread sleep for 1 sec
+                //Thread.sleep(1000)
             }
-            hideKeyboard()
-        }
-        */
+        }).start()
+
+
     }
 
     override fun onDestroy() {
@@ -198,8 +214,6 @@ class BleOperationsActivity : AppCompatActivity() {
     }
 
 
-
-
     @SuppressLint("SetTextI18n")
     private fun log(message: String) {
         val formattedMessage = String.format("%s: %s", dateFormatter.format(Date()), message)
@@ -207,14 +221,12 @@ class BleOperationsActivity : AppCompatActivity() {
     }
 
 
-
-
     private fun showCharacteristicOptions(characteristic: BluetoothGattCharacteristic) {
         characteristicProperties[characteristic]?.let { properties ->
             selector("Select an action to perform", properties.map { it.action }) { _, i ->
                 when (properties[i]) {
                     CharacteristicProperty.Readable -> {
-                        log("Reading from ${ characteristicMap[characteristic.uuid.toString()]}")
+                        log("Reading from ${characteristicMap[characteristic.uuid.toString()]}")
                         readCharacteristic(device, characteristic)
                     }
                     CharacteristicProperty.Writable, CharacteristicProperty.WritableWithoutResponse -> {
@@ -259,45 +271,69 @@ class BleOperationsActivity : AppCompatActivity() {
         hexField.showKeyboard()
     }
 
-    private fun updateUiDecks(charName: String?){
-        val sdf = SimpleDateFormat("HH:mm:ss")
-        val currentDate = sdf.format(Date())
+    private fun timeFromActivity(timeOfLastActivity: Long): String {
+        val timeNow: Long = System.currentTimeMillis()
+        val timeDifference: Long = timeNow - timeOfLastActivity
+        // timeDifference is in milliseconds
+        var seconds = timeDifference / 1000
+        var minutes = seconds / 60
+        var hours = minutes / 60
+        var secondsLeft = seconds - (60 * minutes)
+        val minutesLeft = minutes - (60 * hours)
+
+        var result = if (hours >= 24) {
+            ">1 day"
+        } else {
+            "${hours}h ${minutesLeft}min ${secondsLeft}s"
+        }
+        return result
+    }
+
+
+    private fun updateUiDecks(charName: String?) {
         tvCurrActValue.text = charName.toString()
-        tvLastActValue.text = currentDate
+        if (charName.toString() != "Uncertain") {
+            tvLastActValue.text = "Live"
+        }
     }
 
     // Function that catch new values from Arduino Nano 33 BLE
-    private fun getNewValues(charName : String?, charValue: Int){
+    private fun getNewValues(charName: String?, charValue: Int) {
         when (charName) {
             "Hoja" -> {
                 this.tvHojaValue.text = charValue.toString()
-                if (charValue == 1){
+                if (charValue == 1) {
                     updateUiDecks(charName)
+                    hojaActivity.start() // added1
+
 
                 }
             }
             "Idle" -> {
                 this.tvIdleValue.text = charValue.toString()
-                if (charValue == 1){
+                if (charValue == 1) {
                     updateUiDecks(charName)
                 }
             }
             "Stopnice" -> {
                 this.tvStopniceValue.text = charValue.toString()
-                if (charValue == 1){
+                if (charValue == 1) {
                     updateUiDecks(charName)
                 }
             }
             "Dvigalo" -> {
                 this.tvDvigaloValue.text = charValue.toString()
-                if (charValue == 1){
+                if (charValue == 1) {
                     updateUiDecks(charName)
                 }
             }
             "Uncertain" -> {
                 this.tvUncertainValue.text = charValue.toString()
-                if (charValue == 1){
+                if (charValue == 1) {
                     updateUiDecks(charName)
+                    lastActivityTime = System.currentTimeMillis()
+
+                    hojaActivity.stop() // added1
                 }
             }
         }
@@ -311,14 +347,12 @@ class BleOperationsActivity : AppCompatActivity() {
 
     }
 
-    private fun readChar(device: BluetoothDevice, characteristic: BluetoothGattCharacteristic){
+    private fun readChar(device: BluetoothDevice, characteristic: BluetoothGattCharacteristic) {
         /* Function reads characteristics and return a string */
         var charValue = characteristics[3].value.toHexString()
         //var charStr = charValue.toString()
         Log.i("READVALUE", "Char = $charValue")
     }
-
-
 
 
     @OptIn(ExperimentalStdlibApi::class)
@@ -338,14 +372,14 @@ class BleOperationsActivity : AppCompatActivity() {
                 var characteristicName = characteristicMap[characteristic.uuid.toString()]
                 var strReceived = characteristic.value.toHexString();
                 // Parse string to get HEX value
-                strReceived = strReceived.substring(2,4)
+                strReceived = strReceived.substring(2, 4)
                 // Convert HEX to Int
                 var intReceived = strReceived.toInt(16)
 
 
-                Log.i("OPERATIONS","Value read on ${characteristicName}: ${intReceived}")
+                Log.i("OPERATIONS", "Value read on ${characteristicName}: ${intReceived}")
                 // Pass new values to activity
-                runOnUiThread{
+                runOnUiThread {
                     getNewValues(characteristicName, intReceived)
                 }
             }
@@ -356,29 +390,33 @@ class BleOperationsActivity : AppCompatActivity() {
                 var characteristicName = characteristicMap[characteristic.uuid.toString()]
                 var strReceived = characteristic.value.toHexString();
                 // Parse string to get HEX value
-                strReceived = strReceived.substring(2,4)
+                strReceived = strReceived.substring(2, 4)
                 // Convert HEX to Int
                 var intReceived = strReceived.toInt(16)
 
 
-                Log.i("OPERATIONS","Value changed on ${characteristicName}: ${intReceived}")
+                Log.i("OPERATIONS", "Value changed on ${characteristicName}: ${intReceived}")
                 // Pass new values to activity
-                runOnUiThread{
+                runOnUiThread {
                     getNewValues(characteristicName, intReceived)
                 }
-
-
 
 
             }
 
             onNotificationsEnabled = { _, characteristic ->
-                Log.i("OPERATIONS","Enabled notifications on ${characteristicMap[characteristic.uuid.toString()]}")
+                Log.i(
+                    "OPERATIONS",
+                    "Enabled notifications on ${characteristicMap[characteristic.uuid.toString()]}"
+                )
                 notifyingCharacteristics.add(characteristic.uuid)
             }
 
             onNotificationsDisabled = { _, characteristic ->
-                Log.i("OPERATIONS","Disabled notifications on ${characteristicMap[characteristic.uuid.toString()]}")
+                Log.i(
+                    "OPERATIONS",
+                    "Disabled notifications on ${characteristicMap[characteristic.uuid.toString()]}"
+                )
                 notifyingCharacteristics.remove(characteristic.uuid)
             }
         }
@@ -406,12 +444,14 @@ class BleOperationsActivity : AppCompatActivity() {
     }
 
     private fun Context.hideKeyboard(view: View) {
-        val inputMethodManager = getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
+        val inputMethodManager =
+            getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
         inputMethodManager.hideSoftInputFromWindow(view.windowToken, 0)
     }
 
     private fun EditText.showKeyboard() {
-        val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        val inputMethodManager =
+            getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         requestFocus()
         inputMethodManager.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
     }
