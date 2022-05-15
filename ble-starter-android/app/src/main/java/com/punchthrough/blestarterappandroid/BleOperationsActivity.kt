@@ -24,11 +24,14 @@ import android.app.NotificationManager
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGattCharacteristic
 import android.content.Context
+import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -37,7 +40,9 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SimpleItemAnimator
 import com.punchthrough.blestarterappandroid.ble.ConnectionEventListener
 import com.punchthrough.blestarterappandroid.ble.ConnectionManager
+import com.punchthrough.blestarterappandroid.ble.ConnectionManager.isConnected
 import com.punchthrough.blestarterappandroid.ble.ConnectionManager.readCharacteristic
+import com.punchthrough.blestarterappandroid.ble.ConnectionManager.teardownConnection
 import com.punchthrough.blestarterappandroid.ble.isIndicatable
 import com.punchthrough.blestarterappandroid.ble.isNotifiable
 import com.punchthrough.blestarterappandroid.ble.isReadable
@@ -85,6 +90,10 @@ class BleOperationsActivity : AppCompatActivity() {
     private lateinit var lastCurrActValue: TextView
     private lateinit var tvLastActValue: TextView
     private lateinit var tvActTimeValue: TextView
+    private  lateinit var tvStatusValue: TextView
+    private lateinit var tvConnStatusIndicator : TextView
+    private lateinit var tvConnStatusText: TextView
+    private lateinit var tvButtonReconnect: Button
 
     val hojaActivity = UserActivity("Hoja")
 
@@ -144,7 +153,26 @@ class BleOperationsActivity : AppCompatActivity() {
         tvUncertainValue = findViewById(R.id.tvUncertainValue)
         tvCurrActValue = findViewById(R.id.tvCurrActValue)
         tvLastActValue = findViewById(R.id.tvLastActValue)
-        tvActTimeValue = findViewById((R.id.tvActTimeValue))
+        tvActTimeValue = findViewById(R.id.tvActTimeValue)
+        tvStatusValue = findViewById(R.id.tvStatusValue)
+        tvConnStatusIndicator = findViewById(R.id.tvConnStatusIndicator)
+        tvConnStatusText = findViewById(R.id.tvConnStatusText)
+
+        // Set initial BLE status indicator and text
+        if (device.isConnected()){
+            tvConnStatusIndicator.setBackgroundColor(Color.parseColor("#00D7AE"))
+            tvConnStatusText.text = "Slippers Connected"
+        }
+
+
+        tvButtonReconnect = findViewById(R.id.tvButtonReconnect);
+
+        tvButtonReconnect.setOnClickListener(){
+            teardownConnection(device)
+            val intent = Intent(this, MainActivity::class.java)
+            startActivity(intent)
+        }
+
 
 
         // Initial read of characteristics
@@ -284,7 +312,7 @@ class BleOperationsActivity : AppCompatActivity() {
         var result = if (hours >= 24) {
             ">1 day"
         } else {
-            "${hours}h ${minutesLeft}min ${secondsLeft}s"
+            "${hours}h ${minutesLeft}min ${secondsLeft}s ago"
         }
         return result
     }
@@ -295,6 +323,7 @@ class BleOperationsActivity : AppCompatActivity() {
         if (charName.toString() != "Uncertain") {
             tvLastActValue.text = "Live"
         }
+
     }
 
     // Function that catch new values from Arduino Nano 33 BLE
@@ -319,6 +348,12 @@ class BleOperationsActivity : AppCompatActivity() {
                 this.tvStopniceValue.text = charValue.toString()
                 if (charValue == 1) {
                     updateUiDecks(charName)
+                    // In real app you would use this in case of a fall
+                    tvStatusValue.setBackgroundColor(Color.parseColor("#CB1A5E"))
+                    tvStatusValue.text = "FALL DETECTED"
+                }else{
+                    tvStatusValue.setBackgroundColor(Color.parseColor("#00D7AE"))
+                    tvStatusValue.text = "EVERYTHING IS GOOD"
                 }
             }
             "Dvigalo" -> {
@@ -360,11 +395,21 @@ class BleOperationsActivity : AppCompatActivity() {
         ConnectionEventListener().apply {
             onDisconnect = {
                 runOnUiThread {
+
+                    tvConnStatusIndicator.setBackgroundColor(Color.parseColor("#CB1A5E"))
+                    tvConnStatusText.text = "Slippers Disconnected"
+
+
+                    /*
                     alert {
                         title = "Disconnected"
                         message = "Disconnected from device."
                         positiveButton("OK") { onBackPressed() }
                     }.show()
+
+                     */
+
+
                 }
             }
             onCharacteristicRead = { _, characteristic ->
