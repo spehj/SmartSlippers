@@ -21,7 +21,7 @@
  */
 
 /* Includes ---------------------------------------------------------------- */
-#include <pametni_copati_inferencing.h>
+#include <SmartSlippers_inferencing.h>
 #include <Arduino_LSM9DS1.h>
 #include <ArduinoBLE.h>
 
@@ -56,7 +56,7 @@ BLEService copatiService("eba7805c-b406-11ec-b909-0242ac120002");
 
 BLEIntCharacteristic copatiHoja("05ed8326-b407-11ec-b909-0242ac120002", BLERead | BLENotify);
 BLEIntCharacteristic copatiStopnice("f72e3316-b407-11ec-b909-0242ac120002", BLERead | BLENotify);
-BLEIntCharacteristic copatiDvigalo("05f99232-b408-11ec-b909-0242ac120002", BLERead | BLENotify);
+BLEIntCharacteristic copatiTek("05f99232-b408-11ec-b909-0242ac120002", BLERead | BLENotify);
 BLEIntCharacteristic copatiIdle("f7a9b8d6-b408-11ec-b909-0242ac120002", BLERead | BLENotify);
 BLEIntCharacteristic copatiUncertain("44f709ee-d2bf-11ec-9d64-0242ac120002", BLERead | BLENotify);
 
@@ -104,7 +104,7 @@ void setup()
     BLE.setAdvertisedService(copatiService);
     copatiService.addCharacteristic(copatiHoja);
     copatiService.addCharacteristic(copatiStopnice);
-    copatiService.addCharacteristic(copatiDvigalo);
+    copatiService.addCharacteristic(copatiTek);
     copatiService.addCharacteristic(copatiIdle);
     copatiService.addCharacteristic(copatiUncertain);
     BLE.addService(copatiService);
@@ -243,7 +243,7 @@ void run_inference_background()
                     ei_printf("Prediction: hoja \n");
                     copatiHoja.writeValue(1);
                     copatiStopnice.writeValue(0);
-                    copatiDvigalo.writeValue(0);
+                    copatiTek.writeValue(0);
                     copatiIdle.writeValue(0);
                     copatiUncertain.writeValue(0);
                 }
@@ -252,14 +252,14 @@ void run_inference_background()
                     ei_printf("Prediction: stopnice \n");
                     copatiStopnice.writeValue(1);
                     copatiHoja.writeValue(0);
-                    copatiDvigalo.writeValue(0);
+                    copatiTek.writeValue(0);
                     copatiIdle.writeValue(0);
                     copatiUncertain.writeValue(0);
                 }
-                else if (strcmp(prediction, "dvigalo") == 0)
+                else if (strcmp(prediction, "tek") == 0)
                 {
-                    ei_printf("Prediction: dvigalo \n");
-                    copatiDvigalo.writeValue(1);
+                    ei_printf("Prediction: tek \n");
+                    copatiTek.writeValue(1);
                     copatiHoja.writeValue(0);
                     copatiStopnice.writeValue(0);
                     copatiIdle.writeValue(0);
@@ -271,7 +271,7 @@ void run_inference_background()
                     copatiIdle.writeValue(1);
                     copatiHoja.writeValue(0);
                     copatiStopnice.writeValue(0);
-                    copatiDvigalo.writeValue(0);
+                    copatiTek.writeValue(0);
                     copatiUncertain.writeValue(0);
                 }
                 else if (strcmp(prediction, "uncertain") == 0)
@@ -280,7 +280,7 @@ void run_inference_background()
                     copatiUncertain.writeValue(1);
                     copatiHoja.writeValue(0);
                     copatiStopnice.writeValue(0);
-                    copatiDvigalo.writeValue(0);
+                    copatiTek.writeValue(0);
                     copatiIdle.writeValue(0);
                 }
 
