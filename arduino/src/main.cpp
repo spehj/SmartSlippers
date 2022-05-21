@@ -40,6 +40,16 @@
     //                                      200 * 3
     static float inference_buffer[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE];
 
+    //200
+    //static float koraki_buffer[EI_CLASSIFIER_RAW_SAMPLE_COUNT];
+    static float koraki_buffer[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE];
+    static int count_koraki = 0;
+
+    static float last_steps[4] = {0, 0, 0, 0};
+
+    //za low pass 13, drugace 15
+    #define KORAK_PRAG 15
+
     // Blink
     #define RED 22
     #define BLUE 24
@@ -60,6 +70,9 @@
     BLEIntCharacteristic copatiTek("05f99232-b408-11ec-b909-0242ac120002", BLERead | BLENotify);
     BLEIntCharacteristic copatiIdle("f7a9b8d6-b408-11ec-b909-0242ac120002", BLERead | BLENotify);
     BLEIntCharacteristic copatiUncertain("44f709ee-d2bf-11ec-9d64-0242ac120002", BLERead | BLENotify);
+    BLEIntCharacteristic copatiPadec("9318a796-d8f9-11ec-9d64-0242ac120002", BLERead | BLENotify);
+    BLEIntCharacteristic copatiKoraki("684dc082-d8f9-11ec-9d64-0242ac120002", BLERead | BLENotify);
+
 
     /* Forward declaration */
     void run_inference_background();
@@ -100,6 +113,8 @@
         copatiService.addCharacteristic(copatiTek);
         copatiService.addCharacteristic(copatiIdle);
         copatiService.addCharacteristic(copatiUncertain);
+        copatiService.addCharacteristic(copatiPadec);
+        copatiService.addCharacteristic(copatiKoraki);
         BLE.addService(copatiService);
 
         //BLE.setConnectionInterval(180, 300);
@@ -171,9 +186,6 @@
     void run_inference_background()
     {
         // wait until we have a full buffer
-
-        //          10 * 200 + 100 = 2100
-        // + 100 je blo
         delay((EI_CLASSIFIER_INTERVAL_MS * EI_CLASSIFIER_RAW_SAMPLE_COUNT) + 100);
 
         // This is a structure that smoothens the output result
@@ -185,6 +197,87 @@
         {
             // copy the buffer
             memcpy(inference_buffer, buffer, EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE * sizeof(float));
+            memcpy(koraki_buffer, buffer, EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE * sizeof(float));
+
+            float magnitude = 0;
+            float net_magnitude = 0;
+            float mags[200];
+            for (int i = 2; i < EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE; i += 3)
+            {
+                magnitude = sqrt(pow(koraki_buffer[i - 2], 2) + pow(koraki_buffer[i - 1], 2) + pow(koraki_buffer[i], 2));
+                net_magnitude = magnitude - 9.8;
+                mags[i / 3] = net_magnitude;
+            }
+
+            //low pass filter
+            float mags_filtered[200];
+            for (int i = 0; i < 200; i++)
+            {
+                mags_filtered[i] = mags[i];
+            }
+            float max_magnitude = 0;
+            for (int i = 2; i < 200; i++)
+            {
+                mags_filtered[i] = (mags[i - 2] + mags[i - 1] + mags[i]) / 3;
+                if (mags_filtered[i] > max_magnitude)
+                {
+                    max_magnitude = mags_filtered[i];
+                }
+            }
+
+            int korakov = 0;
+            int presledek_med_koraki = 65;
+
+            int inx_zadnji_korak = -1 * presledek_med_koraki + 1;
+            //če je korak v teku, ga ne upoštevaj
+            if(mags[0] > KORAK_PRAG){
+                inx_zadnji_korak = 0;
+            }
+            for (int i=0; i<200; i++){
+                
+                //net_magnitude = mags_filtered[i];
+                net_magnitude = mags[i];
+
+                if (net_magnitude > KORAK_PRAG && i - inx_zadnji_korak > 60)
+                {
+                    inx_zadnji_korak = i;
+
+                    int je_ze_zabelezen = 0;
+                    for(int j=0; j<4;j++){
+                        if(net_magnitude == last_steps[j]){
+                            je_ze_zabelezen = 1;
+                        }
+                    }
+
+                    if ( je_ze_zabelezen ){
+                        //ei_printf("isti korak...\n");
+                    }
+                    else {
+                        for (int j = 0; j < 3; j++){
+                            last_steps[j] = last_steps[j + 1];
+                        }
+                        last_steps[3] = net_magnitude;
+
+                        korakov++;
+                        count_koraki++;
+                        ei_printf("korak pri %d\n", i);
+                    }
+                }
+            }
+            
+            /*
+            if(korakov > 0){
+                for (int i = 0; i < 200; i++)
+                {
+                    ei_printf("%.2f,", mags_filtered[i]);
+                }
+                ei_printf("\n");
+            }
+            */
+
+            //ei_printf("korakov: %d,  skupaj: %d \n", korakov, count_koraki);
+            //ei_printf("najvecja magnituda je %.2f\n", max_magnitude);
+            //ei_printf("max_x: %.2f, max_y: %.2f, max_z: %.2f\n", max_x, max_y, max_z);
 
             // Turn the raw buffer in a signal which we can the classify
             signal_t signal;
@@ -194,6 +287,7 @@
                 ei_printf("Failed to create signal from buffer (%d)\n", err);
                 return;
             }
+
 
             // Run the classifier
             ei_impulse_result_t result = {0};
@@ -235,6 +329,10 @@
 
             if (central.connected())
             {
+                if(korakov > 0){
+                    copatiKoraki.writeValue(korakov);
+                }
+
                 if (predictionStr != lastPredictionStr)
                 {
                     ei_printf("Sending data to central\n");
@@ -246,6 +344,7 @@
                         copatiTek.writeValue(0);
                         copatiIdle.writeValue(0);
                         copatiUncertain.writeValue(0);
+                        copatiPadec.writeValue(0);
                     }
                     else if (strcmp(prediction, "stopnice") == 0)
                     {
@@ -255,6 +354,7 @@
                         copatiTek.writeValue(0);
                         copatiIdle.writeValue(0);
                         copatiUncertain.writeValue(0);
+                        copatiPadec.writeValue(0);
                     }
                     else if (strcmp(prediction, "tek") == 0)
                     {
@@ -264,6 +364,7 @@
                         copatiStopnice.writeValue(0);
                         copatiIdle.writeValue(0);
                         copatiUncertain.writeValue(0);
+                        copatiPadec.writeValue(0);
                     }
                     else if (strcmp(prediction, "idle") == 0)
                     {
@@ -273,6 +374,7 @@
                         copatiStopnice.writeValue(0);
                         copatiTek.writeValue(0);
                         copatiUncertain.writeValue(0);
+                        copatiPadec.writeValue(0);
                     }
                     else if (strcmp(prediction, "uncertain") == 0)
                     {
@@ -282,6 +384,16 @@
                         copatiStopnice.writeValue(0);
                         copatiTek.writeValue(0);
                         copatiIdle.writeValue(0);
+                        copatiPadec.writeValue(0);
+                    }
+                    else if(strcmp(prediction, "padec") == 0){
+                        ei_printf("Prediction: padec\n");
+                        copatiPadec.writeValue(1);
+                        copatiHoja.writeValue(0);
+                        copatiStopnice.writeValue(0);
+                        copatiTek.writeValue(0);
+                        copatiIdle.writeValue(0);
+                        copatiUncertain.writeValue(0);
                     }
                     lastPredictionStr = predictionStr;
                 }
