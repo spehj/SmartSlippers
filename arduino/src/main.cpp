@@ -193,6 +193,9 @@
         ei_classifier_smooth_t smooth;
         ei_classifier_smooth_init(&smooth, 10 /* no. of readings */, 7 /* min. readings the same */, 0.8 /* min. confidence */, 0.3 /* max anomaly */);
 
+        int padec_counter = 0;
+        int padec_zadnji = 100;
+
         while (1)
         {
             // copy the buffer
@@ -207,22 +210,6 @@
                 magnitude = sqrt(pow(koraki_buffer[i - 2], 2) + pow(koraki_buffer[i - 1], 2) + pow(koraki_buffer[i], 2));
                 net_magnitude = magnitude - 9.8;
                 mags[i / 3] = net_magnitude;
-            }
-
-            //low pass filter
-            float mags_filtered[200];
-            for (int i = 0; i < 200; i++)
-            {
-                mags_filtered[i] = mags[i];
-            }
-            float max_magnitude = 0;
-            for (int i = 2; i < 200; i++)
-            {
-                mags_filtered[i] = (mags[i - 2] + mags[i - 1] + mags[i]) / 3;
-                if (mags_filtered[i] > max_magnitude)
-                {
-                    max_magnitude = mags_filtered[i];
-                }
             }
 
             int korakov = 0;
@@ -265,16 +252,6 @@
                 }
             }
             
-            /*
-            if(korakov > 0){
-                for (int i = 0; i < 200; i++)
-                {
-                    ei_printf("%.2f,", mags_filtered[i]);
-                }
-                ei_printf("\n");
-            }
-            */
-
             //ei_printf("korakov: %d,  skupaj: %d \n", korakov, count_koraki);
             //ei_printf("najvecja magnituda je %.2f\n", max_magnitude);
             //ei_printf("max_x: %.2f, max_y: %.2f, max_z: %.2f\n", max_x, max_y, max_z);
@@ -298,6 +275,26 @@
                 ei_printf("ERR: Failed to run classifier (%d)\n", err);
                 return;
             }
+
+            
+            //padec ...
+            if(result.classification[2].value > 0.5){
+                padec_zadnji = 0;
+                padec_counter++;
+            }
+            else{
+                if(padec_zadnji < 100){
+                    padec_zadnji++;
+                }
+            }
+
+            /*
+            // HOJA     IDLE    PADEC   STOPNICE    TEK
+            for(int i=0; i<5; i++){
+                ei_printf("%s : %.2f ", result.classification[i].label, result.classification[i].value);
+            }
+            ei_printf("\n");
+            */
 
             // print the predictions
             /*
@@ -327,6 +324,8 @@
             }
             ei_printf("]\n");
 
+            
+
             if (central.connected())
             {
                 if(korakov > 0){
@@ -345,6 +344,8 @@
                         copatiIdle.writeValue(0);
                         copatiUncertain.writeValue(0);
                         copatiPadec.writeValue(0);
+                        padec_counter = 0;
+                        padec_zadnji = 100;
                     }
                     else if (strcmp(prediction, "stopnice") == 0)
                     {
@@ -355,6 +356,8 @@
                         copatiIdle.writeValue(0);
                         copatiUncertain.writeValue(0);
                         copatiPadec.writeValue(0);
+                        padec_counter = 0;
+                        padec_zadnji = 100;
                     }
                     else if (strcmp(prediction, "tek") == 0)
                     {
@@ -365,16 +368,31 @@
                         copatiIdle.writeValue(0);
                         copatiUncertain.writeValue(0);
                         copatiPadec.writeValue(0);
+                        padec_counter = 0;
+                        padec_zadnji = 100;
+                        
                     }
                     else if (strcmp(prediction, "idle") == 0)
                     {
-                        ei_printf("Prediction: idle \n");
-                        copatiIdle.writeValue(1);
-                        copatiHoja.writeValue(0);
-                        copatiStopnice.writeValue(0);
-                        copatiTek.writeValue(0);
-                        copatiUncertain.writeValue(0);
-                        copatiPadec.writeValue(0);
+                        // še dodat primer ko iz idla pade?
+                        if(padec_counter > 1 && padec_zadnji < 20){
+                            ei_printf("Prediction: padec\n");
+                            copatiPadec.writeValue(1);
+                            copatiHoja.writeValue(0);
+                            copatiStopnice.writeValue(0);
+                            copatiTek.writeValue(0);
+                            copatiIdle.writeValue(0);
+                            copatiUncertain.writeValue(0);
+                        }
+                        else{
+                            ei_printf("Prediction: idle \n");
+                            copatiIdle.writeValue(1);
+                            copatiHoja.writeValue(0);
+                            copatiStopnice.writeValue(0);
+                            copatiTek.writeValue(0);
+                            copatiUncertain.writeValue(0);
+                            copatiPadec.writeValue(0);
+                        }
                     }
                     else if (strcmp(prediction, "uncertain") == 0)
                     {
@@ -385,15 +403,6 @@
                         copatiTek.writeValue(0);
                         copatiIdle.writeValue(0);
                         copatiPadec.writeValue(0);
-                    }
-                    else if(strcmp(prediction, "padec") == 0){
-                        ei_printf("Prediction: padec\n");
-                        copatiPadec.writeValue(1);
-                        copatiHoja.writeValue(0);
-                        copatiStopnice.writeValue(0);
-                        copatiTek.writeValue(0);
-                        copatiIdle.writeValue(0);
-                        copatiUncertain.writeValue(0);
                     }
                     lastPredictionStr = predictionStr;
                 }
