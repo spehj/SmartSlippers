@@ -69,16 +69,6 @@ class BleOperationsActivity : AppCompatActivity() {
     private val dateFormatter = SimpleDateFormat("MMM d, HH:mm:ss", Locale.US)
     lateinit var notificationChannel: NotificationChannel
     lateinit var notificationManager: NotificationManager
-    lateinit var builder: Notification.Builder
-    private val channelId = "12345"
-    private val description = "Test Notification"
-
-    // Initialize variables for predictions
-    private var noHoja = 0;
-    private var noStopnice = 0;
-    private var noDvigalo = 0;
-    private var noIdle = 0;
-    private var noUncertain = 0;
 
     // Insert activity values
     private lateinit var tvHojaValue: TextView
@@ -87,7 +77,6 @@ class BleOperationsActivity : AppCompatActivity() {
     private lateinit var tvDvigaloValue: TextView
     private lateinit var tvUncertainValue: TextView
     private lateinit var tvCurrActValue: TextView
-    private lateinit var lastCurrActValue: TextView
     private lateinit var tvLastActValue: TextView
     private lateinit var tvActTimeValue: TextView
     private  lateinit var tvStatusValue: TextView
@@ -258,7 +247,7 @@ class BleOperationsActivity : AppCompatActivity() {
                         readCharacteristic(device, characteristic)
                     }
                     CharacteristicProperty.Writable, CharacteristicProperty.WritableWithoutResponse -> {
-                        showWritePayloadDialog(characteristic)
+                        //showWritePayloadDialog(characteristic)
                     }
                     CharacteristicProperty.Notifiable, CharacteristicProperty.Indicatable -> {
                         if (notifyingCharacteristics.contains(characteristic.uuid)) {
@@ -276,7 +265,7 @@ class BleOperationsActivity : AppCompatActivity() {
 
     }
 
-
+    /*
     @SuppressLint("InflateParams")
     private fun showWritePayloadDialog(characteristic: BluetoothGattCharacteristic) {
         val hexField = layoutInflater.inflate(R.layout.edittext_hex_payload, null) as EditText
@@ -298,6 +287,8 @@ class BleOperationsActivity : AppCompatActivity() {
         }.show()
         hexField.showKeyboard()
     }
+
+     */
 
     private fun timeFromActivity(timeOfLastActivity: Long): String {
         val timeNow: Long = System.currentTimeMillis()
