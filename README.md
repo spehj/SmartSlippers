@@ -5,4 +5,4 @@ You can find complete PlatformIO project inside /arduino folder.
 
 Companion Android App written in Kotlin is in another repository (SmartSlippers-Android-Kotlin).
 
-Here you can learn how to use Edge impulse Machine Learning library together with BLE connectivity.
+Here you can learn how to use Edge impulse Machine Learning library together with BLE connectivity to recognize movement, detect falls and count steps.
